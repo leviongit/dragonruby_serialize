@@ -3,6 +3,7 @@ class Class
     args = args.flatten.map(&:to_sym)
     @__serialized_fields__ ||= []
     @__serialized_fields__.concat(args)
+    @__serialized_fields__.uniq!
     attr_accessor *args
   end
 
