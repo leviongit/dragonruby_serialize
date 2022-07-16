@@ -33,3 +33,9 @@ end
   # #<SerializableTest:0x15801ffe0 @w=1280, @path="sprites/foo.png", @y=0, @h=720, @x=0>
 ```
 #### Note that object ids WILL NOT be the same between serialization and deserialization
+
+### Testing
+To workaround lack of requires in mruby for testing, the test is built into the class file. 
+```bash
+$ ruby serializable.rb test
+```

@@ -92,6 +92,8 @@ if ARGV[0] == 'test'
   end
 
   # Note: Objects will have different ids due to serialization process
-  puts "Expected: #{obj.inspect}"
-  puts "Actual: #{Serializable.deserialize(obj.serialize).inspect}"
+  deserialized = Serializable.deserialize(obj.serialize)
+  color_code = [:x, :y, :h, :w, :path].all? { |field| obj.send(field) == deserialized.send(field) } ? "\e[32m" : "\e[31m"
+  puts "#{color_code}Expected: #{obj.inspect}\e[0m"
+  puts "#{color_code}Actual: #{deserialized.inspect}\e[0m"
 end
