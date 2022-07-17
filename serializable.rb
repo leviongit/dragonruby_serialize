@@ -8,7 +8,6 @@ module DataTag
   TT_Rng = 4
   TT_Ary = 5
   TT_Hsh = 6
-  TT_Pair = 62
   TT_Obj = 63 # EOC
   # 00111111
   TT_Str_String = 0
@@ -107,25 +106,6 @@ class Range
       self.begin,
       self.end,
     ].pack("CQ>Q>")
-  end
-end
-
-class Pair
-  def initialize(l, r)
-    @l = l
-    @r = r
-  end
-
-  def serialize_binary()
-    raise EncodingError,
-          "Left object #{@l} (class #{@l.class}) does not implement the `serialize_binary` method" unless @l.respond_to? :serialize_binary
-    raise EncodingError,
-          "Right object #{@r} (class #{@r.class}) does not implement the `serialize_binary` method" unless @r.respond_to? :serialize_binary
-    [
-      DataTag::TT_Pair,
-      @l.serialize_binary,
-      @r.serialize_binary,
-    ].pack("CA*A*")
   end
 end
 
