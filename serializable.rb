@@ -149,8 +149,10 @@ class Hash
     [
       DataTag::TT_Hsh,
       ary.length,
-      ary.map { |l, r|
-        Pair.new(l, r).serialize_binary()
+      ary.flatten.map { |obj|
+        raise EncodingError,
+              "Object #{obj} (class #{obj.class}) does not implement the `serialize_binary` method" unless obj.respond_to? :serialize_binary
+        obj.serialize_binary()
       }.join(""),
     ].pack("CNA*")
   end
