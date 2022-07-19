@@ -48,94 +48,94 @@ module LevisLibs
       [DataTag::TT_Obj, klass.size, klass, self.class.__binary_serialized_fields.length, flds].pack("CNA*NA*")
     end
   end
+end
 
-  class NilClass
-    def serialize_binary()
-      [DataTag::TT_Dat | DataTag::TT_Dat_Nil].pack("C")
-    end
+class NilClass
+  def serialize_binary()
+    [LevisLibs::DataTag::TT_Dat | LevisLibs::DataTag::TT_Dat_Nil].pack("C")
   end
+end
 
-  class TrueClass
-    def serialize_binary()
-      [DataTag::TT_Dat | DataTag::TT_Dat_True].pack("C")
-    end
+class TrueClass
+  def serialize_binary()
+    [LevisLibs::DataTag::TT_Dat | LevisLibs::DataTag::TT_Dat_True].pack("C")
   end
+end
 
-  class FalseClass
-    def serialize_binary()
-      [DataTag::TT_Dat | DataTag::TT_Dat_False].pack("C")
-    end
+class FalseClass
+  def serialize_binary()
+    [LevisLibs::DataTag::TT_Dat | LevisLibs::DataTag::TT_Dat_False].pack("C")
   end
+end
 
-  class Integer
-    def serialize_binary()
-      [DataTag::TT_Int, self].pack("CQ>")
-    end
+class Integer
+  def serialize_binary()
+    [LevisLibs::DataTag::TT_Int, self].pack("CQ>")
   end
+end
 
-  class Float
-    def serialize_binary()
-      [DataTag::TT_Flt, self].pack("CG")
-    end
+class Float
+  def serialize_binary()
+    [LevisLibs::DataTag::TT_Flt, self].pack("CG")
   end
+end
 
-  class String
-    def serialize_binary()
-      [
-        (DataTag::TT_Str | DataTag::TT_Str_String),
-        size,
-        self,
-      ].pack("CNA*")
-    end
+class String
+  def serialize_binary()
+    [
+      (LevisLibs::DataTag::TT_Str | LevisLibs::DataTag::TT_Str_String),
+      size,
+      self,
+    ].pack("CNA*")
   end
+end
 
-  class Symbol
-    def serialize_binary()
-      sstr = to_s
-      [
-        (DataTag::TT_Str | DataTag::TT_Str_Symbol),
-        sstr.size,
-        sstr,
-      ].pack("CNA*")
-    end
+class Symbol
+  def serialize_binary()
+    sstr = to_s
+    [
+      (LevisLibs::DataTag::TT_Str | LevisLibs::DataTag::TT_Str_Symbol),
+      sstr.size,
+      sstr,
+    ].pack("CNA*")
   end
+end
 
-  class Range
-    def serialize_binary()
-      [
-        (DataTag::TT_Rng | (self.exclude_end? ? DataTag::TT_Rng_EE : 0)),
-        self.begin.serialize_binary(),
-        self.end.serialize_binary(),
-      ].pack("CA*A*")
-    end
+class Range
+  def serialize_binary()
+    [
+      (LevisLibs::DataTag::TT_Rng | (self.exclude_end? ? LevisLibs::DataTag::TT_Rng_EE : 0)),
+      self.begin.serialize_binary(),
+      self.end.serialize_binary(),
+    ].pack("CA*A*")
   end
+end
 
-  class Array
-    def serialize_binary()
-      [
-        DataTag::TT_Ary,
-        length,
-        map { |obj|
-          raise EncodingError,
-                "Object #{obj} (class #{obj.class}) does not implement the `serialize_binary` method" unless obj.respond_to? :serialize_binary
-          obj.serialize_binary()
-        }.join(""),
-      ].pack("CNA*")
-    end
+class Array
+  def serialize_binary()
+    [
+      LevisLibs::DataTag::TT_Ary,
+      length,
+      map { |obj|
+        raise EncodingError,
+              "Object #{obj} (class #{obj.class}) does not implement the `serialize_binary` method" unless obj.respond_to? :serialize_binary
+        obj.serialize_binary()
+      }.join(""),
+    ].pack("CNA*")
   end
+end
 
-  class Hash
-    def serialize_binary()
-      ary = to_a
-      [
-        DataTag::TT_Hsh,
-        ary.length,
-        ary.flatten.map { |obj|
-          raise EncodingError,
-                "Object #{obj} (class #{obj.class}) does not implement the `serialize_binary` method" unless obj.respond_to? :serialize_binary
-          obj.serialize_binary()
-        }.join(""),
-      ].pack("CNA*")
-    end
+class Hash
+  def serialize_binary()
+    ary = to_a
+    [
+      LevisLibs::DataTag::TT_Hsh,
+      ary.length,
+      ary.flatten.map { |obj|
+        raise EncodingError,
+              "Object #{obj} (class #{obj.class}) does not implement the `serialize_binary` method" unless obj.respond_to? :serialize_binary
+        obj.serialize_binary()
+      }.join(""),
+    ].pack("CNA*")
   end
 end
