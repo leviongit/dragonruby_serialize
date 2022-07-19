@@ -103,9 +103,9 @@ class Range
   def serialize_binary()
     [
       (DataTag::TT_Rng | (self.exclude_end? ? DataTag::TT_Rng_EE : 0)),
-      self.begin,
-      self.end,
-    ].pack("CQ>Q>")
+      self.begin.serialize_binary(),
+      self.end.serialize_binary(),
+    ].pack("CA*A*")
   end
 end
 
