@@ -83,6 +83,8 @@ module LevisLibs
             else
               b..e
             end
+          when DataTag::TT_Time
+            Time.at(bytes.slice!(0, 8).unpack("Q>")[0])
           else
             raise DecodeError, <<~ERR
                     Unrecognised record type, got #{tt} (chr #{tt.chr})

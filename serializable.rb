@@ -9,6 +9,7 @@ module LevisLibs
     TT_Range = 4
     TT_Array = 5
     TT_Hash = 6
+    TT_Time = 7
     TT_Obj = 63 # EOC
     # 00111111
     TT_Str_String = 0
@@ -137,5 +138,14 @@ class Hash
         obj.serialize_binary()
       }.join(""),
     ].pack("CNA*")
+  end
+end
+
+class Time
+  def serialize_binary()
+    [
+      LevisLibs::DataTag::TT_Time,
+      to_i,
+    ].pack("CQ>")
   end
 end
