@@ -4,11 +4,11 @@ module LevisLibs
   module DataTag
     TT_Dat = 0
     TT_Int = 1
-    TT_Flt = 2
-    TT_Str = 3
-    TT_Rng = 4
-    TT_Ary = 5
-    TT_Hsh = 6
+    TT_Float = 2
+    TT_String = 3
+    TT_Range = 4
+    TT_Array = 5
+    TT_Hash = 6
     TT_Obj = 63 # EOC
     # 00111111
     TT_Str_String = 0
@@ -76,14 +76,14 @@ end
 
 class Float
   def serialize_binary()
-    [LevisLibs::DataTag::TT_Flt, self].pack("CG")
+    [LevisLibs::DataTag::TT_Float, self].pack("CG")
   end
 end
 
 class String
   def serialize_binary()
     [
-      (LevisLibs::DataTag::TT_Str | LevisLibs::DataTag::TT_Str_String),
+      (LevisLibs::DataTag::TT_String | LevisLibs::DataTag::TT_Str_String),
       size,
       self,
     ].pack("CNA*")
@@ -94,7 +94,7 @@ class Symbol
   def serialize_binary()
     sstr = to_s
     [
-      (LevisLibs::DataTag::TT_Str | LevisLibs::DataTag::TT_Str_Symbol),
+      (LevisLibs::DataTag::TT_String | LevisLibs::DataTag::TT_Str_Symbol),
       sstr.size,
       sstr,
     ].pack("CNA*")
@@ -104,7 +104,7 @@ end
 class Range
   def serialize_binary()
     [
-      (LevisLibs::DataTag::TT_Rng | (self.exclude_end? ? LevisLibs::DataTag::TT_Rng_EE : 0)),
+      (LevisLibs::DataTag::TT_Range | (self.exclude_end? ? LevisLibs::DataTag::TT_Rng_EE : 0)),
       self.begin.serialize_binary(),
       self.end.serialize_binary(),
     ].pack("CA*A*")
@@ -114,7 +114,7 @@ end
 class Array
   def serialize_binary()
     [
-      LevisLibs::DataTag::TT_Ary,
+      LevisLibs::DataTag::TT_Array,
       length,
       map { |obj|
         raise EncodingError,
@@ -129,7 +129,7 @@ class Hash
   def serialize_binary()
     ary = to_a
     [
-      LevisLibs::DataTag::TT_Hsh,
+      LevisLibs::DataTag::TT_Hash,
       ary.length,
       ary.flatten.map { |obj|
         raise EncodingError,
