@@ -1,3 +1,6 @@
+# (c) 2022 leviongit
+# This code is licensed under the BSD 3-Clause License license (see LICENSE for details)
+
 module LevisLibs
   class DecodeError < StandardError; end
 
