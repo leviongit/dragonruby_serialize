@@ -1,6 +1,6 @@
 # dragonruby_serialize
 
-A proof-of-concept (and quite barebones) binary serialization library for DragonRuby.
+A proof-of-concept binary serialization library for DragonRuby.
 Currently supports serializing:
 - `Integer`s;
 - `Float`s;
@@ -9,7 +9,9 @@ Currently supports serializing:
 - `nil`s, `true`, and `false`;
 - `Range`s;
 - `Array`s;
-- `Hash`es; and
+- `Hash`es;
+- `Struct`s;
+- `Time` objects; and
 - arbitrary objects including the `Serializable` module
 
 Currently supports deserializing:
@@ -20,7 +22,9 @@ Currently supports deserializing:
 - `nil`s, `true`, and `false`;
 - `Range`s;
 - `Array`s;
-- `Hash`es; and
+- `Hash`es;
+- `Struct`s;
+- `Time` objects; and
 - arbitrary objects including the `Serializable` module
 
 Currently it is impossible to serialize recursive structures. This may change in the future.
