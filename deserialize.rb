@@ -58,6 +58,26 @@ module LevisLibs
             }
 
             instance
+          when DataTag::TT_StructObject
+            sname_len = bytes.slice!(0, 4).unpack("N")[0]
+            struct = Object.const_get(bytes.slice!(0, sname_len))
+
+            instance = struct.new
+
+            dat = []
+            i = 0
+            len = bytes.slice!(0, 4).unpack("N")[0]
+
+            while i < len
+              dat << Deserialize.load(bytes, root: false)
+              i += 1
+            end
+
+            struct.members.zip(dat).each { |fld, val|
+              instance.send :"#{fld}=", val
+            }
+
+            instance
           when DataTag::TT_String
             len = bytes.slice!(0, 4).unpack("N")[0]
             bytes.slice!(0, len)

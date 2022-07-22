@@ -15,6 +15,8 @@ module LevisLibs
     TT_Time = 10
     EOD = TT_Object = 63 # EOC
     TF_RangeExcludeEndFlag = 1 << 6
+    TF_StructObjectFlag = 1 << 6
+    TT_StructObject = TT_Object | TF_StructObjectFlag
     TT_RangeExcludeEnd = TT_Range | TF_RangeExcludeEndFlag
     # 00111111
   end
@@ -161,5 +163,25 @@ class Time
       LevisLibs::DataTag::TT_Time,
       to_i,
     ].pack("CQ>")
+  end
+end
+
+class Struct
+  def serialize_binary()
+    name = self.class.name
+    raise LevisLibs::EncodingError, <<~ERR unless name
+      Anonymous structs cannot be serialized
+    ERR
+    [
+      LevisLibs::DataTag::TT_Object | LevisLibs::DataTag::TF_StructObjectFlag,
+      name.length,
+      name,
+      members.length,
+      members.map { |fld|
+        v = send fld
+        LevisLibs::Serializable.ensure_serializability!(v, "Field #{fld}")
+        v.serialize_binary()
+      }.join(""),
+    ].pack("CNA*NA*")
   end
 end
