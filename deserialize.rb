@@ -45,6 +45,10 @@ module LevisLibs
             kname_len = bytes.slice!(0, 4).unpack("N")[0]
             klass = Object.const_get(bytes.slice!(0, kname_len))
 
+            if klass.respond_to?(:load)
+              return klass.load(bytes, root: false)
+            end
+
             instance = klass.allocate
 
             dat = []
