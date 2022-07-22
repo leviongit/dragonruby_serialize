@@ -12,7 +12,7 @@ module LevisLibs
             root ? bytes.dup : bytes
           else
             raise DecodeError,
-                  "bytes must be a BINARY (ASCII-8BIT) encoded string, an array of byte integers, or an IO object"
+                  "bytes must be a BINARY (ASCII-8BIT) encoded string, an array of byte integers"
           end
 
         val = case (tt = bytes.slice!(0).ord)
