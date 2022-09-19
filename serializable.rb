@@ -6,7 +6,7 @@ module LevisLibs
 
   module DataTag
     include Enum
-    TT_Nil = i()
+    TT_Nil = i(0)
     TT_False = i()
     TT_True = i()
     TT_Int8 = i()
