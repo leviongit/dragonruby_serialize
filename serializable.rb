@@ -6,23 +6,25 @@ module LevisLibs
 
   module DataTag
     include Enum
-    TT_Nil = i
-    TT_False = i
-    TT_True = i
-    TT_Int8 = i
-    TT_Int16 = i
-    TT_Int32 = i
-    TT_Int64 = i
-    TT_Float = i
-    TT_String = i
-    TT_Symbol = i
-    TT_RangeEndExclude = i
-    TT_RangeEndInclude = i
-    TT_Array = i
-    TT_Hash = i
-    TT_Time = i
-    TT_Struct = i
-    EOD = TT_Object = i(63) # EOC
+    TT_Nil = i()
+    TT_False = i()
+    TT_True = i()
+    TT_Int8 = i()
+    TT_Int16 = i()
+    TT_Int32 = i()
+    TT_Int64 = i()
+    TT_Float = i()
+    TT_String = i()
+    TT_Symbol = i()
+    TT_RangeEndExclude = i()
+    TT_RangeEndInclude = i()
+    TT_Array = i()
+    TT_Hash = i()
+    TT_Time = i()
+    TT_Struct = i()
+    TT_Object = i() # EOC
+    TT_ObjectByName = i()
+    EOD = i(63)
   end
 
   module Serializable
@@ -40,39 +42,73 @@ module LevisLibs
                 ERR
         end
       end
+
+      def included(klass)
+        # This does not create accessor methods to allow operating on C-defined classes
+        def klass.attr_serialize_binary(*attrs)
+          @__binary_serialized_fields ||= []
+          @__binary_serialized_fields.concat(attrs.flatten).uniq!
+          @__binary_serialized_fields
+        end
+
+        def klass.__binary_serialized_fields
+          @__binary_serialized_fields
+        end
+      end
     end
 
-    #       def included(klass)
-    #         def klass.attr_serialize_binary(*attrs)
-    #           attrs = attrs.flatten.map(&:to_sym)
-    #           @__binary_serialized_fields ||= []
-    #           attr_accessor *(attrs - @__binary_serialized_fields)
-    #           @__binary_serialized_fields.concat(attrs).uniq!
-    #           @__binary_serialized_fields
-    #         end
+    def serialize_binary(optimise = false)
+      flds = self.class.__binary_serialized_fields.map { |fld|
+        # v = send(fld)
+        v = nil
+        if fld.to_s[0] == "@"
+          v = instance_variable_get(fld)
+        else
+          v = send(fld)
+        end
 
-    #         def klass.__binary_serialized_fields
-    #           @__binary_serialized_fields
-    #         end
-    #       end
+        Serializable.ensure_serializability!(v, "Field #{fld}")
+        v.serialize_binary(optimise)
+      }.join("")
 
-    #     def serialize_binary()
-    #       flds = self.class.__binary_serialized_fields.map { |fld|
-    #         v = send(fld)
-    #         Serializable.ensure_serializability!(v, "Field #{fld}")
-    #         v.serialize_binary()
-    #       }.join("")
+      klass = self.class.name
+      raise EncodingError, "Anonymous classes cannot be serialized" unless klass
 
-    #       klass = self.class.name
-    #       raise EncodingError, "Anonymous classes cannot be serialized" unless klass
-
-    #       [DataTag::TT_Object, klass.size, klass, self.class.__binary_serialized_fields.length, flds].pack("CNA*NA*")
-    # end
+      [DataTag::TT_Object, klass.size, klass, self.class.__binary_serialized_fields.length, flds].pack("CNA*NA*")
+    end
   end
 
   module SerializableByName
-    def self.included(cls)
-      notimplemented!("SerializableByName.included")
+    def self.included(klass)
+      # This does not create accessor methods to allow operating on C-defined classes
+      def klass.attr_serialize_binary(*attrs)
+        @__binary_serialized_fields ||= []
+        @__binary_serialized_fields.concat(attrs.flatten).uniq!
+        @__binary_serialized_fields
+      end
+
+      def klass.__binary_serialized_fields
+        @__binary_serialized_fields
+      end
+    end
+
+    def serialize_binary(optimise = false)
+      klass = self.class.name
+      raise EncodingError, "Anonymous classes cannot be serialized" unless klass
+
+      flds = self.class.__binary_serialized_fields.map { |fld|
+        v = nil
+        if fld.to_s[0] == "@"
+          v = instance_variable_get(fld)
+        else
+          v = send(fld)
+        end
+
+        Serializable.ensure_serializability!(v, "Field #{fld}")
+        [fld.size, fld.to_s, v.serialize_binary(optimise)].pack("NA*A*")
+      }.join("")
+
+      [DataTag::TT_ObjectByName, klass.size, klass, self.class.__binary_serialized_fields.length, flds].pack("CNA*NA*")
     end
   end
 end

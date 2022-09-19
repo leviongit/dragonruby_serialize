@@ -49,24 +49,51 @@ module LevisLibs
               return klass.load(bytes, root: false)
             end
 
-            notimplemented!("Deserialize.load")
+            instance = klass.allocate
 
-            # instance = klass.allocate
+            dat = []
+            i = 0
+            len = bytes.slice!(0, 4).unpack("N")[0]
 
-            # dat = []
-            # i = 0
-            # len = bytes.slice!(0, 4).unpack("N")[0]
+            while i < len
+              dat << Deserialize.load(bytes, root: false)
+              i += 1
+            end
 
-            # while i < len
-            #   dat << Deserialize.load(bytes, root: false)
-            #   i += 1
-            # end
+            klass.__binary_serialized_fields.zip(dat).each { |fld, val|
+              if fld.to_s[0] == "@"
+                instance.instance_variable_set(fld, val)
+              else
+                instance.send(:"#{fld}=", val)
+              end
+            }
 
-            # klass.__binary_serialized_fields.zip(dat).each { |fld, val|
-            #   instance.send :"#{fld}=", val
-            # }
+            instance
+          when DataTag::TT_ObjectByName
+            kname_len = bytes.slice!(0, 4).unpack("N")[0]
+            klass = Object.const_get(bytes.slice!(0, kname_len))
 
-            # instance
+            instance = klass.allocate
+
+            i = 0
+            len = bytes.slice!(0, 4).unpack("N")[0]
+
+            while i < len
+              fldlen = bytes.slice!(0, 4).unpack("N")[0]
+              fldnam = bytes.slice!(0, fldlen)
+
+              val = Deserialize.load(bytes, root: false)
+
+              if fldnam[0] == "@"
+                instance.instance_variable_set(fldnam, val)
+              else
+                instance.send(:"#{fldnam}=", val)
+              end
+
+              i += 1
+            end
+
+            instance
           when DataTag::TT_Struct
             sname_len = bytes.slice!(0, 4).unpack("N")[0]
             struct = Object.const_get(bytes.slice!(0, sname_len))
