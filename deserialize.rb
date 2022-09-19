@@ -49,23 +49,25 @@ module LevisLibs
               return klass.load(bytes, root: false)
             end
 
-            instance = klass.allocate
+            notimplemented!("Deserialize.load")
 
-            dat = []
-            i = 0
-            len = bytes.slice!(0, 4).unpack("N")[0]
+            # instance = klass.allocate
 
-            while i < len
-              dat << Deserialize.load(bytes, root: false)
-              i += 1
-            end
+            # dat = []
+            # i = 0
+            # len = bytes.slice!(0, 4).unpack("N")[0]
 
-            klass.__binary_serialized_fields.zip(dat).each { |fld, val|
-              instance.send :"#{fld}=", val
-            }
+            # while i < len
+            #   dat << Deserialize.load(bytes, root: false)
+            #   i += 1
+            # end
 
-            instance
-          when DataTag::TT_StructObject
+            # klass.__binary_serialized_fields.zip(dat).each { |fld, val|
+            #   instance.send :"#{fld}=", val
+            # }
+
+            # instance
+          when DataTag::TT_Struct
             sname_len = bytes.slice!(0, 4).unpack("N")[0]
             struct = Object.const_get(bytes.slice!(0, sname_len))
 
@@ -91,8 +93,14 @@ module LevisLibs
           when DataTag::TT_Symbol
             len = bytes.slice!(0, 4).unpack("N")[0]
             bytes.slice!(0, len).to_sym
-          when DataTag::TT_Int
-            bytes.slice!(0, 8).unpack("Q>")[0]
+          when DataTag::TT_Int8
+            bytes.slice!(0, 1).unpack("c")[0]
+          when DataTag::TT_Int16
+            bytes.slice!(0, 2).unpack("s>")[0]
+          when DataTag::TT_Int32
+            bytes.slice!(0, 4).unpack("l>")[0]
+          when DataTag::TT_Int64
+            bytes.slice!(0, 8).unpack("q>")[0]
           when DataTag::TT_Float
             bytes.slice!(0, 8).unpack("G")[0]
           when DataTag::TT_True
@@ -101,10 +109,10 @@ module LevisLibs
             false
           when DataTag::TT_Nil
             nil
-          when DataTag::TT_Range, DataTag::TT_RangeExcludeEnd
+          when DataTag::TT_RangeEndInclude, DataTag::TT_RangeEndExclude
             b = Deserialize.load(bytes, root: false)
             e = Deserialize.load(bytes, root: false)
-            ((tt & DataTag::TF_RangeExcludeEndFlag) == 0) ?
+            tt == DataTag::TT_RangeEndInclude ?
               b..e :
               b...e
           when DataTag::TT_Time

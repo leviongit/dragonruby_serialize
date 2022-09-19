@@ -5,23 +5,24 @@ module LevisLibs
   class EncodingError < StandardError; end
 
   module DataTag
-    TT_Nil = 0
-    TT_False = 1
-    TT_True = 2
-    TT_Int = 3
-    TT_Float = 4
-    TT_String = 5
-    TT_Symbol = 6
-    TT_Range = 7
-    TT_Array = 8
-    TT_Hash = 9
-    TT_Time = 10
-    EOD = TT_Object = 63 # EOC
-    TF_RangeExcludeEndFlag = 1 << 6
-    TF_StructObjectFlag = 1 << 6
-    TT_StructObject = TT_Object | TF_StructObjectFlag
-    TT_RangeExcludeEnd = TT_Range | TF_RangeExcludeEndFlag
-    # 00111111
+    include Enum
+    TT_Nil = i
+    TT_False = i
+    TT_True = i
+    TT_Int8 = i
+    TT_Int16 = i
+    TT_Int32 = i
+    TT_Int64 = i
+    TT_Float = i
+    TT_String = i
+    TT_Symbol = i
+    TT_RangeEndExclude = i
+    TT_RangeEndInclude = i
+    TT_Array = i
+    TT_Hash = i
+    TT_Time = i
+    TT_Struct = i
+    EOD = TT_Object = i(63) # EOC
   end
 
   module Serializable
@@ -39,69 +40,80 @@ module LevisLibs
                 ERR
         end
       end
-
-      def included(klass)
-        def klass.attr_serialize_binary(*attrs)
-          attrs = attrs.flatten.map(&:to_sym)
-          @__binary_serialized_fields ||= []
-          attr_accessor *(attrs - @__binary_serialized_fields)
-          @__binary_serialized_fields.concat(attrs).uniq!
-          @__binary_serialized_fields
-        end
-
-        def klass.__binary_serialized_fields
-          @__binary_serialized_fields
-        end
-      end
     end
 
-    def serialize_binary()
-      flds = self.class.__binary_serialized_fields.map { |fld|
-        v = send(fld)
-        Serializable.ensure_serializability!(v, "Field #{fld}")
-        v.serialize_binary()
-      }.join("")
+    #       def included(klass)
+    #         def klass.attr_serialize_binary(*attrs)
+    #           attrs = attrs.flatten.map(&:to_sym)
+    #           @__binary_serialized_fields ||= []
+    #           attr_accessor *(attrs - @__binary_serialized_fields)
+    #           @__binary_serialized_fields.concat(attrs).uniq!
+    #           @__binary_serialized_fields
+    #         end
 
-      klass = self.class.name
-      raise EncodingError, "Anonymous classes cannot be serialized" unless klass
+    #         def klass.__binary_serialized_fields
+    #           @__binary_serialized_fields
+    #         end
+    #       end
 
-      [DataTag::TT_Object, klass.size, klass, self.class.__binary_serialized_fields.length, flds].pack("CNA*NA*")
+    #     def serialize_binary()
+    #       flds = self.class.__binary_serialized_fields.map { |fld|
+    #         v = send(fld)
+    #         Serializable.ensure_serializability!(v, "Field #{fld}")
+    #         v.serialize_binary()
+    #       }.join("")
+
+    #       klass = self.class.name
+    #       raise EncodingError, "Anonymous classes cannot be serialized" unless klass
+
+    #       [DataTag::TT_Object, klass.size, klass, self.class.__binary_serialized_fields.length, flds].pack("CNA*NA*")
+    # end
+  end
+
+  module SerializableByName
+    def self.included(cls)
+      notimplemented!("SerializableByName.included")
     end
   end
 end
 
 class NilClass
-  def serialize_binary()
+  def serialize_binary(optimise = false) # these cannot be optimised anyway
     [LevisLibs::DataTag::TT_Nil].pack("C")
   end
 end
 
 class TrueClass
-  def serialize_binary()
+  def serialize_binary(optimise = false)
     [LevisLibs::DataTag::TT_True].pack("C")
   end
 end
 
 class FalseClass
-  def serialize_binary()
+  def serialize_binary(optimise = false)
     [LevisLibs::DataTag::TT_False].pack("C")
   end
 end
 
 class Integer
-  def serialize_binary()
-    [LevisLibs::DataTag::TT_Int, self].pack("CQ>")
+  def serialize_binary(optimise = false)
+    return [LevisLibs::DataTag::TT_Int64, self].pack("Cq>") unless optimise
+
+    return [LevisLibs::DataTag::TT_Int8, self].pack("Cc") if (self >= -128 && self <= 127)
+    return [LevisLibs::DataTag::TT_Int16, self].pack("Cs>") if (self >= -32768 && self <= 32767)
+    return [LevisLibs::DataTag::TT_Int32, self].pack("Cl>") if (self >= -2147483648 && self <= 2147483647)
+    return [LevisLibs::DataTag::TT_Int64, self].pack("Cq>")
   end
 end
 
 class Float
-  def serialize_binary()
+  def serialize_binary(optimise = false)
     [LevisLibs::DataTag::TT_Float, self].pack("CG")
   end
 end
 
 class String
-  def serialize_binary()
+  def serialize_binary(optimise = false)
     [
       LevisLibs::DataTag::TT_String,
       size,
@@ -111,7 +123,7 @@ class String
 end
 
 class Symbol
-  def serialize_binary()
+  def serialize_binary(optimise = false)
     sstr = to_s
     [
       LevisLibs::DataTag::TT_Symbol,
@@ -122,46 +134,46 @@ class Symbol
 end
 
 class Range
-  def serialize_binary()
+  def serialize_binary(optimise = false)
     LevisLibs::Serializable.ensure_serializability!(self.begin, "Left object is not serializable")
     LevisLibs::Serializable.ensure_serializability!(self.end, "Right object is not serializable")
     [
-      self.exclude_end? ? LevisLibs::DataTag::TT_RangeExcludeEnd : LevisLibs::DataTag::TT_Range,
-      self.begin.serialize_binary(),
-      self.end.serialize_binary(),
+      self.exclude_end? ? LevisLibs::DataTag::TT_RangeEndExclude : LevisLibs::DataTag::TT_RangeEndInclude,
+      self.begin.serialize_binary(optimise),
+      self.end.serialize_binary(optimise),
     ].pack("CA*A*")
   end
 end
 
 class Array
-  def serialize_binary()
+  def serialize_binary(optimise = false)
     [
       LevisLibs::DataTag::TT_Array,
       length,
       map { |obj|
         LevisLibs::Serializable.ensure_serializability!(obj)
-        obj.serialize_binary()
+        obj.serialize_binary(optimise)
       }.join(""),
     ].pack("CNA*")
   end
 end
 
 class Hash
-  def serialize_binary()
+  def serialize_binary(optimise = false)
     ary = to_a
     [
       LevisLibs::DataTag::TT_Hash,
       ary.length,
       ary.flatten.map { |obj|
         LevisLibs::Serializable.ensure_serializability!(obj)
-        obj.serialize_binary()
+        obj.serialize_binary(optimise)
       }.join(""),
     ].pack("CNA*")
   end
 end
 
 class Time
-  def serialize_binary()
+  def serialize_binary(optimise = false)
     [
       LevisLibs::DataTag::TT_Time,
       to_i,
@@ -170,20 +182,20 @@ class Time
 end
 
 class Struct
-  def serialize_binary()
+  def serialize_binary(optimise = false) # idk how I would optimise this
     name = self.class.name
     raise LevisLibs::EncodingError, <<~ERR unless name
       Anonymous structs cannot be serialized
     ERR
     [
-      LevisLibs::DataTag::TT_Object | LevisLibs::DataTag::TF_StructObjectFlag,
+      LevisLibs::DataTag::TT_Struct,
       name.length,
       name,
       members.length,
       members.map { |fld|
         v = send fld
         LevisLibs::Serializable.ensure_serializability!(v, "Field #{fld}")
-        v.serialize_binary()
+        v.serialize_binary(optimise)
       }.join(""),
     ].pack("CNA*NA*")
   end
