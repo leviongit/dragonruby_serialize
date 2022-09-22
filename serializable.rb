@@ -4,29 +4,6 @@
 module LevisLibs
   class EncodingError < StandardError; end
 
-  module DataTag
-    include Enum
-    TT_Nil = i(0)
-    TT_False = i()
-    TT_True = i()
-    TT_Int8 = i()
-    TT_Int16 = i()
-    TT_Int32 = i()
-    TT_Int64 = i()
-    TT_Float = i()
-    TT_String = i()
-    TT_Symbol = i()
-    TT_RangeEndExclude = i()
-    TT_RangeEndInclude = i()
-    TT_Array = i()
-    TT_Hash = i()
-    TT_Time = i()
-    TT_Struct = i()
-    TT_Object = i() # EOC
-    TT_ObjectByName = i()
-    EOD = i(63)
-  end
-
   module Serializable
     class << self
       def serializable?(object)
@@ -39,7 +16,7 @@ module LevisLibs
                 <<~ERR.strip()
                   Object #{object} (class #{object.class}) does not implement the `serialize_binary` method
                   #{errmsg}
-                ERR
+          ERR
         end
       end
 
@@ -114,7 +91,8 @@ module LevisLibs
 end
 
 class NilClass
-  def serialize_binary(optimise = false) # these cannot be optimised anyway
+  def serialize_binary(optimise = false)
+    # these cannot be optimised anyway
     [LevisLibs::DataTag::TT_Nil].pack("C")
   end
 end
@@ -183,14 +161,30 @@ end
 
 class Array
   def serialize_binary(optimise = false)
-    [
+    return [
       LevisLibs::DataTag::TT_Array,
       length,
       map { |obj|
         LevisLibs::Serializable.ensure_serializability!(obj)
         obj.serialize_binary(optimise)
       }.join(""),
-    ].pack("CNA*")
+    ].pack("CNA*") if !optimise || length > 4
+
+    tag = case length
+          when 0 then LevisLibs::DataTag::TT_EmptyA
+          when 1 then LevisLibs::DataTag::TT_Single
+          when 2 then LevisLibs::DataTag::TT_Pair
+          when 3 then LevisLibs::DataTag::TT_Triple
+          when 4 then LevisLibs::DataTag::TT_Quad
+          end
+
+    [
+      tag,
+      map do |obj|
+        LevisLibs::Serializable.ensure_serializability!(obj)
+        obj.serialize_binary(optimise)
+      end.join("")
+    ].pack("CA*")
   end
 end
 
@@ -218,7 +212,8 @@ class Time
 end
 
 class Struct
-  def serialize_binary(optimise = false) # idk how I would optimise this
+  def serialize_binary(optimise = false)
+    # idk how I would optimise this
     name = self.class.name
     raise LevisLibs::EncodingError, <<~ERR unless name
       Anonymous structs cannot be serialized

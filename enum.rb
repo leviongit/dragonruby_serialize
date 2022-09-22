@@ -3,7 +3,8 @@ module Enum
     def klass.i(set = nil)
       @__enumc ||= 0
       if set
-        @__enumc = set
+        @__enumc = set + 1
+        set
       else
         v = @__enumc
         @__enumc += 1
