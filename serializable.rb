@@ -16,7 +16,7 @@ module LevisLibs
                 <<~ERR.strip()
                   Object #{object} (class #{object.class}) does not implement the `serialize_binary` method
                   #{errmsg}
-          ERR
+                ERR
         end
       end
 
@@ -34,59 +34,61 @@ module LevisLibs
       end
     end
 
-    def serialize_binary(optimise = false)
-      flds = self.class.__binary_serialized_fields.map { |fld|
-        # v = send(fld)
-        v = nil
-        if fld.to_s[0] == "@"
-          v = instance_variable_get(fld)
-        else
-          v = send(fld)
-        end
+    # def serialize_binary(optimise = false)
+    #   flds = self.class.__binary_serialized_fields.map { |fld|
+    #     # v = send(fld)
+    #     v = nil
+    #     if fld.to_s[0] == "@"
+    #       v = instance_variable_get(fld)
+    #     else
+    #       v = send(fld)
+    #     end
 
-        Serializable.ensure_serializability!(v, "Field #{fld}")
-        v.serialize_binary(optimise)
-      }.join("")
+    #     Serializable.ensure_serializability!(v, "Field #{fld}")
+    #     v.serialize_binary(optimise)
+    #   }.join("")
 
-      klass = self.class.name
-      raise EncodingError, "Anonymous classes cannot be serialized" unless klass
+    #   klass = self.class.name
+    #   raise EncodingError, "Anonymous classes cannot be serialized" unless klass
 
-      [DataTag::TT_Object, klass.size, klass, self.class.__binary_serialized_fields.length, flds].pack("CNA*NA*")
-    end
-  end
+    #   [DataTag::TT_Object, klass.size, klass, self.class.__binary_serialized_fields.length, flds].pack("CNA*NA*")
+    # end
 
-  module SerializableByName
-    def self.included(klass)
-      # This does not create accessor methods to allow operating on C-defined classes
-      def klass.attr_serialize_binary(*attrs)
-        @__binary_serialized_fields ||= []
-        @__binary_serialized_fields.concat(attrs.flatten).uniq!
-        @__binary_serialized_fields
-      end
-
-      def klass.__binary_serialized_fields
-        @__binary_serialized_fields
-      end
+    def serialize_b(serializer)
     end
 
-    def serialize_binary(optimise = false)
-      klass = self.class.name
-      raise EncodingError, "Anonymous classes cannot be serialized" unless klass
+    # module SerializableByName
+    #   def self.included(klass)
+    #     # This does not create accessor methods to allow operating on C-defined classes
+    #     def klass.attr_serialize_binary(*attrs)
+    #       @__binary_serialized_fields ||= []
+    #       @__binary_serialized_fields.concat(attrs.flatten).uniq!
+    #       @__binary_serialized_fields
+    #     end
 
-      flds = self.class.__binary_serialized_fields.map { |fld|
-        v = nil
-        if fld.to_s[0] == "@"
-          v = instance_variable_get(fld)
-        else
-          v = send(fld)
-        end
+    #     def klass.__binary_serialized_fields
+    #       @__binary_serialized_fields
+    #     end
+    #   end
 
-        Serializable.ensure_serializability!(v, "Field #{fld}")
-        [fld.size, fld.to_s, v.serialize_binary(optimise)].pack("NA*A*")
-      }.join("")
+    #   def serialize_binary(optimise = false)
+    #     klass = self.class.name
+    #     raise EncodingError, "Anonymous classes cannot be serialized" unless klass
 
-      [DataTag::TT_ObjectByName, klass.size, klass, self.class.__binary_serialized_fields.length, flds].pack("CNA*NA*")
-    end
+    #     flds = self.class.__binary_serialized_fields.map { |fld|
+    #       v = nil
+    #       if fld.to_s[0] == "@"
+    #         v = instance_variable_get(fld)
+    #       else
+    #         v = send(fld)
+    #       end
+
+    #       Serializable.ensure_serializability!(v, "Field #{fld}")
+    #       [fld.size, fld.to_s, v.serialize_binary(optimise)].pack("NA*A*")
+    #     }.join("")
+
+    #     [DataTag::TT_ObjectByName, klass.size, klass, self.class.__binary_serialized_fields.length, flds].pack("CNA*NA*")
+    #   end
   end
 end
 
@@ -162,28 +164,28 @@ end
 class Array
   def serialize_binary(optimise = false)
     return [
-      LevisLibs::DataTag::TT_Array,
-      length,
-      map { |obj|
-        LevisLibs::Serializable.ensure_serializability!(obj)
-        obj.serialize_binary(optimise)
-      }.join(""),
-    ].pack("CNA*") if !optimise || length > 4
+             LevisLibs::DataTag::TT_Array,
+             length,
+             map { |obj|
+               LevisLibs::Serializable.ensure_serializability!(obj)
+               obj.serialize_binary(optimise)
+             }.join(""),
+           ].pack("CNA*") if !optimise || length > 4
 
     tag = case length
-          when 0 then LevisLibs::DataTag::TT_EmptyA
-          when 1 then LevisLibs::DataTag::TT_Single
-          when 2 then LevisLibs::DataTag::TT_Pair
-          when 3 then LevisLibs::DataTag::TT_Triple
-          when 4 then LevisLibs::DataTag::TT_Quad
-          end
+      when 0 then LevisLibs::DataTag::TT_EmptyA
+      when 1 then LevisLibs::DataTag::TT_Single
+      when 2 then LevisLibs::DataTag::TT_Pair
+      when 3 then LevisLibs::DataTag::TT_Triple
+      when 4 then LevisLibs::DataTag::TT_Quad
+      end
 
     [
       tag,
       map do |obj|
         LevisLibs::Serializable.ensure_serializability!(obj)
         obj.serialize_binary(optimise)
-      end.join("")
+      end.join(""),
     ].pack("CA*")
   end
 end
